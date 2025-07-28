@@ -1,0 +1,70 @@
+import java.io.*;
+import java.math.BigInteger;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
+import org.json.*;
+
+public class ShamirSecretSolver {
+
+    static class Point {
+        BigInteger x, y;
+        Point(BigInteger x, BigInteger y) {
+            this.x = x;
+            this.y = y;
+        }
+    }
+
+    public static List<Point> readPoints(String filename) throws Exception {
+        String jsonTxt = new String(Files.readAllBytes(Paths.get(filename)));
+        JSONObject jobj = new JSONObject(jsonTxt);
+        JSONObject keys = jobj.getJSONObject("keys");
+        int k = keys.getInt("k");
+        List<Integer> xnums = new ArrayList<>();
+        for (String key : jobj.keySet()) {
+            if (!key.equals("keys")) xnums.add(Integer.parseInt(key));
+        }
+        Collections.sort(xnums);
+        List<Point> pts = new ArrayList<>();
+        for (int i = 0; i < k; i++) {
+            int x = xnums.get(i);
+            JSONObject entry = jobj.getJSONObject(String.valueOf(x));
+            int base = Integer.parseInt(entry.getString("base"));
+            BigInteger y = new BigInteger(entry.getString("value"), base);
+            pts.add(new Point(BigInteger.valueOf(x), y));
+        }
+        return pts;
+    }
+
+    public static BigInteger lagrangeAtZero(List<Point> pts) {
+        BigInteger result = BigInteger.ZERO;
+        int k = pts.size();
+        for (int i = 0; i < k; i++) {
+            BigInteger xi = pts.get(i).x;
+            BigInteger yi = pts.get(i).y;
+            BigInteger num = BigInteger.ONE;
+            BigInteger den = BigInteger.ONE;
+            for (int j = 0; j < k; j++) {
+                if (j == i) continue;
+                BigInteger xj = pts.get(j).x;
+                num = num.multiply(xj.negate());
+                den = den.multiply(xi.subtract(xj));
+            }
+            result = result.add(yi.multiply(num).divide(den));
+        }
+        return result;
+    }
+
+    public static void main(String[] args) {
+        String[] files = { "testcase1.json", "testcase2.json" };
+        for (String file : files) {
+            try {
+                List<Point> pts = readPoints(file);
+                BigInteger secret = lagrangeAtZero(pts);
+                System.out.println(secret);
+            } catch (Exception e) {
+                System.err.println("Error with " + file + ": " + e.getMessage());
+            }
+        }
+    }
+}
